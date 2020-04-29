@@ -173,6 +173,17 @@ void SlamToolbox::setParams()
 void SlamToolbox::setROSInterfaces()
 /*****************************************************************************/
 {
+  rmw_qos_profile_slam_toolbox =
+      {
+          RMW_QOS_POLICY_HISTORY_KEEP_LAST,
+          1,
+          RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT,
+          RMW_QOS_POLICY_DURABILITY_VOLATILE,
+          RMW_QOS_DEADLINE_DEFAULT,
+          RMW_QOS_LIFESPAN_DEFAULT,
+          RMW_QOS_POLICY_LIVELINESS_SYSTEM_DEFAULT,
+          RMW_QOS_LIVELINESS_LEASE_DURATION_DEFAULT,
+          false};
   double tmp_val = 30.;
   tmp_val = this->declare_parameter("tf_buffer_duration", tmp_val);
   tf_ = std::make_unique<tf2_ros::Buffer>(this->get_clock(),
@@ -221,8 +232,10 @@ void SlamToolbox::publishTransformLoop(
   const double & transform_publish_period)
 /*****************************************************************************/
 {
+  RCLCPP_INFO(get_logger(), "PublishTransformLoop");
   if(transform_publish_period == 0)
   {
+    RCLCPP_INFO(get_logger(), "PublishTransformLoop -> return");
     return;
   }
 
@@ -246,6 +259,7 @@ void SlamToolbox::publishTransformLoop(
 void SlamToolbox::publishVisualizations()
 /*****************************************************************************/
 {
+  RCLCPP_INFO(get_logger(), "publishVisualizations");
   nav_msgs::msg::OccupancyGrid & og = map_.map;
   og.info.resolution = resolution_;
   og.info.origin.position.x = 0.0;
@@ -264,9 +278,11 @@ void SlamToolbox::publishVisualizations()
 
   while(rclcpp::ok())
   {
+    RCLCPP_INFO(get_logger(), "publishVisualizations -> while");
     updateMap();
     if(!isPaused(VISUALIZING_GRAPH))
     {
+      RCLCPP_INFO(get_logger(), "publishVisualizations");
       closure_assistant_->publishGraph();
     }
     r.sleep();
@@ -374,26 +390,31 @@ LaserRangeFinder * SlamToolbox::getLaser(const
 bool SlamToolbox::updateMap()
 /*****************************************************************************/
 {
+  RCLCPP_INFO(get_logger(), "updateMap");
   if (sst_->get_subscription_count() == 0)
   {
+    RCLCPP_INFO(get_logger(), "updateMap > return true (no subscriber active)");
     return true;
   }
   boost::mutex::scoped_lock lock(smapper_mutex_);
   OccupancyGrid * occ_grid = smapper_->getOccupancyGrid(resolution_);
   if(!occ_grid)
   {
+    RCLCPP_INFO(get_logger(), "updateMap > return false");
     return false;
   }
 
   vis_utils::toNavMap(occ_grid, map_.map);
 
   // publish map as current
+  RCLCPP_INFO(get_logger(), "updateMap > Publish map now");
   map_.map.header.stamp = this->now();
   sst_->publish(map_.map);
   sstm_->publish(map_.map.info);
   
   delete occ_grid;
   occ_grid = nullptr;
+  RCLCPP_INFO(get_logger(), "updateMap > return true");
   return true;
 }
 
@@ -466,6 +487,7 @@ LocalizedRangeScan * SlamToolbox::getLocalizedRangeScan(
   Pose2 & odom_pose)
 /*****************************************************************************/
 {
+  RCLCPP_INFO(get_logger(), "getLocalizedRangeScan");
   // Create a vector of doubles for lib
   std::vector<kt_double> readings = laser_utils::scanToReadings(
     *scan, lasers_[scan->header.frame_id].isInverted());
@@ -480,6 +502,7 @@ LocalizedRangeScan * SlamToolbox::getLocalizedRangeScan(
     laser->GetName(), readings);
   range_scan->SetOdometricPose(transformed_pose);
   range_scan->SetCorrectedPose(transformed_pose);
+  RCLCPP_INFO(get_logger(), "getLocalizedRangeScan > return range_scan");
   return range_scan;
 }
 
@@ -535,7 +558,7 @@ bool SlamToolbox::shouldProcessScan(
 
   last_pose = pose;
   last_scan_time = scan->header.stamp; 
-
+  RCLCPP_INFO(get_logger(), "shouldProcessScan > return true");
   return true;
 }
 
@@ -555,6 +578,7 @@ LocalizedRangeScan * SlamToolbox::addScan(
   Pose2 & odom_pose)
 /*****************************************************************************/
 {  
+  RCLCPP_INFO(get_logger(), "addScan");
   // get our localized range scan
   LocalizedRangeScan * range_scan = getLocalizedRangeScan(
     laser, scan, odom_pose);
@@ -614,7 +638,7 @@ LocalizedRangeScan * SlamToolbox::addScan(
     delete range_scan;
     range_scan = nullptr;
   }
-
+  RCLCPP_INFO(get_logger(), "addScan > return range_scan");
   return range_scan;
 }
 
@@ -625,6 +649,7 @@ bool SlamToolbox::mapCallback(
   std::shared_ptr<nav_msgs::srv::GetMap::Response> res)
 /*****************************************************************************/
 {
+  RCLCPP_INFO(get_logger(), "mapCallback");
   if(map_.map.info.width && map_.map.info.height)
   {
     boost::mutex::scoped_lock lock(smapper_mutex_);

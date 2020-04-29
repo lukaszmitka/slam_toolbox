@@ -159,6 +159,7 @@ protected:
   // pluginlib
   pluginlib::ClassLoader<karto::ScanSolver> solver_loader_;
   std::shared_ptr<karto::ScanSolver> solver_;
+  rmw_qos_profile_t rmw_qos_profile_slam_toolbox;
 };
 
 } // end namespace
